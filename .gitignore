@@ -2,3 +2,14 @@
 /backend/target/
 /frontend/vite.config.d.ts
 /frontend/vite.config.js
+
+# IDE files
+.idea/
+*.iml
+out/
+gen/
+
+# Build outputs
+target/
+dist/
+node_modules/
