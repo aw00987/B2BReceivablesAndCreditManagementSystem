@@ -5,21 +5,21 @@ package com.aw00987.rcms.enums;
  */
 public enum UserRole {
 
-    ADMIN("管理者"),
+    ADMIN,
 
-    SALES("営業マン"),
+    SALES,
 
-    LEGAL("法務担当"),
+    LEGAL,
 
-    FINANCE("財務担当");
+    FINANCE;
 
-    private final String label;
-
-    UserRole(String label) {
-        this.label = label;
+    public static UserRole fromName(String userRole) {
+        for (UserRole value : UserRole.values()) {
+            if (value.name().equalsIgnoreCase(userRole)) {
+                return value;
+            }
+        }
+        throw new IllegalArgumentException("Invalid user role: " + userRole);
     }
 
-    public String getLabel() {
-        return label;
-    }
 }

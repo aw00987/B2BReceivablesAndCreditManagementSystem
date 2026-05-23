@@ -1,11 +1,12 @@
 package com.aw00987.rcms.service;
 
+import com.aw00987.rcms.dto.InvoiceQueryResponseDto;
 import com.aw00987.rcms.entity.Invoice;
 import com.aw00987.rcms.entity.Reconciliation;
 import com.aw00987.rcms.enums.InvoiceStatus;
 import com.aw00987.rcms.enums.MatchType;
-import com.aw00987.rcms.repository.InvoiceRepository;
-import com.aw00987.rcms.repository.ReconciliationRepository;
+import com.aw00987.rcms.repository.InvoiceMapper;
+import com.aw00987.rcms.repository.ReconciliationMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,11 +32,14 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ReconciliationService {
 
-    private final ReconciliationRepository reconciliationRepository;
-    private final InvoiceRepository invoiceRepository;
+    private final ReconciliationMapper reconciliationMapper;
+
+    private final InvoiceService invoiceService;
+    private final InvoiceMapper invoiceMapper;
 
     /**
      * CSVファイルを解析し、請求書との自動消込を実行します。
+     *
      * @param file アップロードされたCSVファイル
      * @return 消込結果の統計情報（マッチ件数、合計金額）
      * @throws RuntimeException CSV解析中にエラーが発生した場合
@@ -68,45 +72,47 @@ public class ReconciliationService {
                 LocalDate transactionDate = LocalDate.parse(columns[3].trim());
                 BigDecimal transactionAmount = new BigDecimal(columns[4].trim());
 
-                Optional<Invoice> invoiceOpt = invoiceRepository.findByInvoiceNo(invoiceNo);
-                if (invoiceOpt.isPresent()) {
-                    Invoice invoice = invoiceOpt.get();
-                    
-                    // すでに消込済みの場合はスキップ
-                    if (invoice.getStatus() == InvoiceStatus.PAID) {
-                        continue;
-                    }
+                InvoiceQueryResponseDto invoice = invoiceMapper.selectByInvoiceNo(invoiceNo)
+                        .orElseThrow();//todo:
 
-                    // 消込情報の作成
-                    Reconciliation reconciliation = new Reconciliation();
-                    reconciliation.setInvoiceNo(invoice.getInvoiceNo());
-                    reconciliation.setBankTransactionId(bankTransactionId);
-                    reconciliation.setPayerName(payerName);
-                    reconciliation.setTransactionDate(transactionDate);
-                    reconciliation.setTransactionAmount(transactionAmount);
-                    reconciliation.setReconciliationAmount(transactionAmount);
-                    reconciliation.setReconciledAt(LocalDateTime.now());
-                    reconciliation.setReconciledBy("SYSTEM"); // 自動消込のためシステム
-                    reconciliation.setDescription("CSV自動消込");
-
-                    // 金額チェックとマッチングタイプの判定
-                    if (invoice.getInvoiceAmount().compareTo(transactionAmount) == 0) {
-                        reconciliation.setMatchType(MatchType.EXACT);
-                        reconciliation.setVarianceAmount(BigDecimal.ZERO);
-                        invoice.setStatus(InvoiceStatus.PAID);
-                    } else {
-                        reconciliation.setMatchType(MatchType.AMOUNT_VARIANCE);
-                        reconciliation.setVarianceAmount(invoice.getInvoiceAmount().subtract(transactionAmount));
-                        // 差額がある場合でも、一旦ステータスを更新
-                        invoice.setStatus(InvoiceStatus.PAID);
-                    }
-
-                    reconciliationRepository.save(reconciliation);
-                    invoiceRepository.save(invoice);
-
-                    matchedCount++;
-                    totalAmount = totalAmount.add(transactionAmount);
+                // すでに消込済みの場合はスキップ
+                if (InvoiceStatus.fromName(invoice.getStatus()) == InvoiceStatus.PAID) {
+                    continue;
                 }
+
+                Invoice updateInvoice = new Invoice();
+                updateInvoice.setId(invoice.getId());
+
+                // 消込情報の作成
+                Reconciliation reconciliation = new Reconciliation();
+                reconciliation.setInvoiceNo(invoice.getInvoiceNo());
+                reconciliation.setBankTransactionId(bankTransactionId);
+                reconciliation.setPayerName(payerName);
+                reconciliation.setTransactionDate(transactionDate);
+                reconciliation.setTransactionAmount(transactionAmount);
+                reconciliation.setReconciliationAmount(transactionAmount);
+                reconciliation.setReconciledAt(LocalDateTime.now());
+                reconciliation.setReconciledBy("SYSTEM"); // 自動消込のためシステム
+                reconciliation.setDescription("CSV自動消込");
+
+                // 金額チェックとマッチングタイプの判定
+                if (invoice.getInvoiceAmount().compareTo(transactionAmount) == 0) {
+                    reconciliation.setMatchType(MatchType.EXACT);
+                    reconciliation.setVarianceAmount(BigDecimal.ZERO);
+                    updateInvoice.setStatus(InvoiceStatus.PAID);
+                } else {
+                    reconciliation.setMatchType(MatchType.AMOUNT_VARIANCE);
+                    reconciliation.setVarianceAmount(invoice.getInvoiceAmount().subtract(transactionAmount));
+                    // 差額がある場合でも、一旦ステータスを更新 todo:
+                    updateInvoice.setStatus(InvoiceStatus.PAID);
+                }
+
+                reconciliationMapper.save(reconciliation);
+                invoiceMapper.update(updateInvoice);
+
+                matchedCount++;
+                totalAmount = totalAmount.add(transactionAmount);
+
             }
         } catch (Exception e) {
             log.error("CSV解析中にエラーが発生しました", e);

@@ -1,15 +1,42 @@
-# Project exclude paths
-/backend/target/
-/frontend/vite.config.d.ts
-/frontend/vite.config.js
+# OS files
+.DS_Store
+Thumbs.db
 
-# IDE files
+# Editor / IDE
 .idea/
 *.iml
 out/
-gen/
 
-# Build outputs
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+
+# Java / Maven (backend + root)
+backend/target/
 target/
+
+# Generic build/cache outputs
+build/
 dist/
-node_modules/
+.cache/
+tmp/
+
+# Test / coverage
+coverage/

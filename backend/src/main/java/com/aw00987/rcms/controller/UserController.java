@@ -2,7 +2,6 @@ package com.aw00987.rcms.controller;
 
 import com.aw00987.rcms.dto.UserRequestDto;
 import com.aw00987.rcms.dto.UserResponseDto;
-import com.aw00987.rcms.entity.User;
 import com.aw00987.rcms.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -18,8 +17,9 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping
-    public ResponseEntity<User> createUser(@RequestBody UserRequestDto userRequestDto) {
-        return ResponseEntity.ok(userService.createUser(userRequestDto));
+    public ResponseEntity<String> createUser(@RequestBody UserRequestDto userRequestDto) {
+        userService.createUser(userRequestDto);
+        return ResponseEntity.ok("");
     }
 
     @GetMapping
@@ -27,9 +27,9 @@ public class UserController {
         return ResponseEntity.ok(userService.getUsers(pageable));
     }
 
-    @DeleteMapping("/{username}")
-    public ResponseEntity<Void> disableUser(@PathVariable String username) {
-        userService.disableUser(username);
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> disableUser(@PathVariable Long id) {
+        userService.disableUserById(id);
         return ResponseEntity.noContent().build();
     }
 }

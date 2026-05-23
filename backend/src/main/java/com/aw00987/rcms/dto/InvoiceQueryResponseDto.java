@@ -5,17 +5,17 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Data
-public class InvoiceResponseDto {
+public class InvoiceQueryResponseDto {
+    private long id;
     private String invoiceNo;
-    private String companyCode;
+    private String status;
     private String companyName;
     private BigDecimal invoiceAmount;
+    private BigDecimal principalAmount;
+    private BigDecimal interestAmount;
     private LocalDate issueDate;
     private LocalDate dueDate;
+    private LocalDate interestStartDate;
     private String createdBy;
     private String notes;
-    private String status;
-    private BigDecimal principalAmount;
-    private LocalDate interestStartDate;
-    private BigDecimal interestAmount;
 }

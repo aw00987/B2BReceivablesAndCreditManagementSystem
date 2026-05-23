@@ -1,26 +1,33 @@
 package com.aw00987.rcms.enums;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 
-/**
- * 請求書ステータス
- */
 @Getter
+@AllArgsConstructor
 public enum InvoiceStatus {
+    NORMAL,
+    PAID,
+    OVERDUE,
+    DUNNING,
+    LITIGATION;
 
-    NORMAL("正常"),
+    public static InvoiceStatus fromName(String name) {
+        for (InvoiceStatus value : InvoiceStatus.values()) {
+            if (value.name().equalsIgnoreCase(name)) {
+                return value;
+            }
+        }
+        throw new IllegalArgumentException("Invalid invoice status name: " + name);
+    }
 
-    PAID("消込済"),
-
-    OVERDUE("延滞"),
-
-    DUNNING("督促中"),
-
-    LITIGATION("法的措置");
-
-    private final String label;
-
-    InvoiceStatus(String label) {
-        this.label = label;
+    public boolean canTransitTo(InvoiceStatus target) {
+        return switch (this) {
+            case NORMAL -> target == OVERDUE || target == PAID;
+            case OVERDUE -> target == DUNNING || target == PAID;
+            case DUNNING -> target == LITIGATION || target == PAID;
+            case LITIGATION -> target == PAID;
+            case PAID -> false;
+        };
     }
 }

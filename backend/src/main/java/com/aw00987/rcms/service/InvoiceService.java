@@ -1,17 +1,17 @@
 package com.aw00987.rcms.service;
 
 import com.aw00987.rcms.dto.DashboardStatisticsDto;
-import com.aw00987.rcms.dto.InvoiceRequestDto;
-import com.aw00987.rcms.dto.InvoiceResponseDto;
+import com.aw00987.rcms.dto.InvoiceQueryRequestDto;
+import com.aw00987.rcms.dto.InvoiceSaveRequestDto;
+import com.aw00987.rcms.dto.InvoiceQueryResponseDto;
 import com.aw00987.rcms.entity.Invoice;
 import com.aw00987.rcms.enums.InvoiceStatus;
-import com.aw00987.rcms.repository.CompanyRepository;
-import com.aw00987.rcms.repository.InvoiceRepository;
-import com.aw00987.rcms.repository.UserRepository;
+import com.aw00987.rcms.repository.InvoiceMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -22,7 +22,6 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -34,106 +33,127 @@ import java.util.List;
 @RequiredArgsConstructor
 public class InvoiceService {
 
-    private final InvoiceRepository invoiceRepository;
-    private final CompanyRepository companyRepository;
-    private final UserRepository userRepository;
+    private final InvoiceMapper invoiceMapper;
 
-    /**
-     * 新しい請求書を作成します。
-     * @param invoiceRequestDto 請求書作成リクエスト情報
-     * @return 保存された請求書エンティティ
-     */
+    public Page<InvoiceQueryResponseDto> pageInvoices(Pageable pageable, InvoiceQueryRequestDto queryParams) {
+        List<InvoiceQueryResponseDto> list = invoiceMapper.selectPage(
+                queryParams.getInvoiceNo(),
+                queryParams.getCompanyName(),
+                queryParams.getInvoiceStatus().name(),
+                queryParams.getInvoiceAmount(),
+                queryParams.getInvoiceDateFrom(),
+                queryParams.getInvoiceDateTo(),
+                queryParams.getCreateByUserRealName(),
+                pageable.getOffset(), pageable.getPageSize()
+        );
+        long totalCount = invoiceMapper.selectCount(
+                queryParams.getInvoiceNo(),
+                queryParams.getCompanyName(),
+                queryParams.getInvoiceStatus().name(),
+                queryParams.getInvoiceAmount(),
+                queryParams.getInvoiceDateFrom(),
+                queryParams.getInvoiceDateTo(),
+                queryParams.getCreateByUserRealName()
+        );
+        return new PageImpl<>(list, pageable, totalCount);
+    }
+
+    public InvoiceQueryResponseDto getInvoiceDetail(long id) {
+        return invoiceMapper.selectById(id).orElse(null);
+    }
+
     @Transactional
-    public Invoice createInvoice(InvoiceRequestDto invoiceRequestDto) {
-
-        Invoice invoice = new Invoice();
-        // 現在のタイムスタンプに基づいて請求書番号を生成
+    public void addNewInvoice(InvoiceSaveRequestDto dto) {
         String invoiceNo = "INV-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
+
+        //todo: 检查日期必须在今天之后
+        Invoice invoice = new Invoice();
         invoice.setInvoiceNo(invoiceNo);
-        invoice.setCompanyCode(invoiceRequestDto.getCompanyCode());
-        invoice.setInvoiceAmount(invoiceRequestDto.getInvoiceAmount());
-        invoice.setIssueDate(invoiceRequestDto.getIssueDate());
-        invoice.setDueDate(invoiceRequestDto.getDueDate());
-        invoice.setNotes(invoiceRequestDto.getNotes());
+        invoice.setCompanyId(dto.getCompanyId());
+        invoice.setStatus(InvoiceStatus.NORMAL);//todo:检查直接映射数据库数据的可行性
+        invoice.setInvoiceAmount(dto.getInvoiceAmount());
+        invoice.setPrincipalAmount(dto.getInvoiceAmount());
+        invoice.setInterestAmount(dto.getInvoiceAmount());
+        invoice.setIssueDate(dto.getIssueDate());
+        invoice.setDueDate(dto.getDueDate());
+        invoice.setNotes(dto.getNotes());
+        invoice.setCreatedByUserId(dto.getCreatedByUserId());
+
+        invoiceMapper.insert(invoice);
+        System.out.println(invoice.getId());//todo:验证
+    }
+
+    //todo：前端注意控制只传改变了的字段，需要一个机制区分“可改变的”和“本次改变了的”
+    @Transactional
+    public void updateInvoiceById(long id,//todo:问ai应该用long还是Long
+                                  InvoiceSaveRequestDto dto) {
+        Invoice invoice = new Invoice();
+        invoice.setId(id);
+        invoice.setInvoiceNo(dto.getInvoiceNo());
+        invoice.setCompanyId(dto.getCompanyId());
         invoice.setStatus(InvoiceStatus.NORMAL);
-        invoice.setCreatedBy(invoiceRequestDto.getCreatedBy());
-        invoice.setPrincipalAmount(invoiceRequestDto.getInvoiceAmount());
-        invoice.setInterestAmount(BigDecimal.ZERO);
-
-        return invoiceRepository.save(invoice);
+        invoice.setInvoiceAmount(dto.getInvoiceAmount());
+        invoice.setPrincipalAmount(dto.getInvoiceAmount());
+        invoice.setInterestAmount(dto.getInvoiceAmount());
+        invoice.setIssueDate(dto.getIssueDate());
+        invoice.setDueDate(dto.getDueDate());
+        invoice.setNotes(dto.getNotes());
+        invoice.setCreatedByUserId(dto.getCreatedByUserId());
+        invoiceMapper.update(invoice);
     }
 
-    /**
-     * 請求書の消込（入金済み）処理を行います。
-     * @param invoiceNo 請求書番号
-     * @param note 備考
-     * @return 更新された請求書エンティティ
-     */
     @Transactional
-    public Invoice invoicePaid(String invoiceNo, String note) {
-        Invoice invoice = this.getInvoice(invoiceNo);
-        invoice.setStatus(InvoiceStatus.PAID);
-        if (StringUtils.isNotBlank(note)) {
-            invoice.setNotes(note);
-        }
-        return invoiceRepository.save(invoice);
+    public void invoicePaid(long id, String note) {
+        Invoice invoice = new Invoice();
+        invoice.setId(id);
+        invoice.setStatus(InvoiceStatus.PAID);//todo: 好像不应该这么直接SET
+        invoice.setNotes(StringUtils.trimToEmpty(note));
+        invoiceMapper.update(invoice);
     }
 
-    /**
-     * 請求書の督促処理を行います（手動実行）。
-     * @param invoiceNo 請求書番号
-     * @param note 備考
-     * @return 更新された請求書エンティティ
-     */
     @Transactional
-    public Invoice invoiceDunning(String invoiceNo, String note) {
-        Invoice invoice = this.getInvoice(invoiceNo);
+    public void invoiceDunning(long id, String note) {
+        Invoice invoice = new Invoice();
+        invoice.setId(id);
         invoice.setStatus(InvoiceStatus.DUNNING);
-        if (StringUtils.isNotBlank(note)) {
-            invoice.setNotes(note);
-        }
+        invoice.setNotes(StringUtils.trimToEmpty(note));
         invoice.setInterestStartDate(LocalDate.now());
         invoice.setInterestAmount(BigDecimal.ZERO);
-        return invoiceRepository.save(invoice);
+        invoiceMapper.update(invoice);
     }
 
-    /**
-     * 請求書の法的措置（訴訟）処理を行います（手動実行）。
-     * @param invoiceNo 請求書番号
-     * @param note 備考
-     * @return 更新された請求書エンティティ
-     */
     @Transactional
-    public Invoice invoiceLitigation(String invoiceNo, String note) {
-        Invoice invoice = this.getInvoice(invoiceNo);
+    public void invoiceLitigation(long id, String note) {
+        Invoice invoice = new Invoice();
+        invoice.setId(id);
         invoice.setStatus(InvoiceStatus.LITIGATION);
-        if (StringUtils.isNotBlank(note)) {
-            invoice.setNotes(note);
-        }
-        return invoiceRepository.save(invoice);
+        invoice.setNotes(StringUtils.trimToEmpty(note));
+        invoiceMapper.update(invoice);
     }
 
     /**
      * 支払期限を過ぎた請求書を自動的に「延滞」ステータスに更新します（毎日0時に実行）。
      */
     @Scheduled(cron = "0 0 0 * * ?")
-    @Transactional
+    @Transactional//todo：需要回滚到什么程度？事务的嵌套如何管理？
     public void invoiceOverdue() {
-        List<String> invoiceNos = invoiceRepository
-                .findInvoiceNosByStatusAndDueDateBefore(
-                        InvoiceStatus.NORMAL, LocalDate.now()
-                );
-        for (String invoiceNo : invoiceNos) {
-            Invoice invoice = this.getInvoice(invoiceNo);
+        List<Long> invoiceIds = invoiceMapper.selectInvoiceIdsNeedsToOverdue();
+        for (Long invoiceId : invoiceIds) {
+            Invoice invoice = new Invoice();
+            invoice.setId(invoiceId);
             invoice.setStatus(InvoiceStatus.OVERDUE);
-            invoiceRepository.save(invoice);
+            invoiceMapper.update(invoice);
         }
     }
 
-    /** 遅延損害金の年利率（6%） */
+    /**
+     * 遅延損害金の年利率（6%）
+     */
     public static final BigDecimal INTEREST_RATE = new BigDecimal("0.06");
 
-    /** 1年間の日数 */
+    /**
+     * 1年間の日数
+     */
     public static final BigDecimal DAYS_IN_YEAR = new BigDecimal(365);
 
     /**
@@ -143,88 +163,55 @@ public class InvoiceService {
     @Transactional
     public void calculateAllInvoiceInterest() {
         // 遅延損害金の計算が必要な請求書を取得
-        List<String> invoiceNos = invoiceRepository
-                .findInvoiceNosByStatusAndInterestStartDateBefore(
-                        InvoiceStatus.DUNNING, LocalDate.now()
-                );
+        List<Long> invoiceIds = invoiceMapper.selectInvoiceIdsNeedsToIncreaseInterest();
 
-        for (String invoiceNo : invoiceNos) {
-            log.debug("請求書番号 {} の遅延損害金を計算中...", invoiceNo);
+        for (Long invoiceId : invoiceIds) {
+            InvoiceQueryResponseDto invoice = invoiceMapper.selectById(invoiceId).orElseThrow();
 
-            Invoice invoice = this.getInvoice(invoiceNo);
+            log.debug("請求書番号 {} の遅延損害金を計算中...", invoice.getInvoiceNo());
 
             // 日本の商法/民法に基づき年利で計算。公式：請求残高 × (利率% ÷ 365)
             // 端数処理：四捨五入（HALF_UP）
-            BigDecimal principalAmount = invoice.getPrincipalAmount();
+            BigDecimal principalAmount = defaultZero(invoice.getPrincipalAmount());
             BigDecimal accumulatedInterest = principalAmount.multiply(INTEREST_RATE)
                     .divide(DAYS_IN_YEAR, 0, RoundingMode.HALF_UP);
 
-            invoice.setInterestAmount(invoice.getInterestAmount().add(accumulatedInterest));
-            invoice.setInvoiceAmount(invoice.getInvoiceAmount().add(accumulatedInterest));
+            Invoice updateInvoice = new Invoice();
+            updateInvoice.setId(invoice.getId());
+            updateInvoice.setInterestAmount(defaultZero(invoice.getInterestAmount()).add(accumulatedInterest));
+            updateInvoice.setInvoiceAmount(defaultZero(invoice.getInvoiceAmount()).add(accumulatedInterest));
 
-            invoiceRepository.save(invoice);
+            invoiceMapper.update(updateInvoice);
 
-            log.debug("請求書番号 {} の遅延損害金を計算完了", invoiceNo);
+            log.debug("請求書番号 {} の遅延損害金を計算完了", invoice.getInvoiceNo());
         }
     }
 
     /**
-     * 請求書の一覧をページングして取得します。
-     * @param pageable ページング情報
-     * @return 請求書レスポンスDTOのページ
-     */
-    public Page<InvoiceResponseDto> getInvoices(Pageable pageable) {
-        return invoiceRepository.findAll(pageable).map(this::convertToResponseDto);
-    }
-
-    /**
-     * 請求書の詳細情報を取得します。
-     * @param invoiceNo 請求書番号
-     * @return 請求書レスポンスDTO
-     */
-    public InvoiceResponseDto getInvoiceDetail(String invoiceNo) {
-        return invoiceRepository.findByInvoiceNo(invoiceNo)
-                .map(this::convertToResponseDto)
-                .orElse(null);
-    }
-
-    /**
-     * 請求書エンティティを取得します。
-     * @param invoiceNo 請求書番号
-     * @return 請求書エンティティ
-     */
-    public Invoice getInvoice(String invoiceNo) {
-        return invoiceRepository.findByInvoiceNo(invoiceNo).orElse(null);
-    }
-
-    /**
-     * ダッシュボード用の統計情報を取得します。
-     * @return ダッシュボード統計DTO
+     * todo: 搞清楚这个方法在干什么
      */
     public DashboardStatisticsDto getDashboardStatistics() {
         // 売掛金総額: PAID 以外のすべての請求書の合計
-        List<InvoiceStatus> receivableStatuses = Arrays.asList(
-                InvoiceStatus.NORMAL, InvoiceStatus.OVERDUE, InvoiceStatus.DUNNING, InvoiceStatus.LITIGATION
+        List<String> receivableStatuses = List.of(
+                InvoiceStatus.NORMAL.name(),
+                InvoiceStatus.OVERDUE.name(),
+                InvoiceStatus.DUNNING.name(),
+                InvoiceStatus.LITIGATION.name()
         );
-        BigDecimal totalReceivable = invoiceRepository.findAll().stream()
-                .filter(i -> receivableStatuses.contains(i.getStatus()))
-                .map(Invoice::getInvoiceAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalReceivable = defaultZero(invoiceMapper.sumInvoiceAmountByStatuses(receivableStatuses));
 
         // 延滞金額: OVERDUE, DUNNING, LITIGATION の合計
-        List<InvoiceStatus> overdueStatuses = Arrays.asList(
-                InvoiceStatus.OVERDUE, InvoiceStatus.DUNNING, InvoiceStatus.LITIGATION
+        List<String> overdueStatuses = List.of(
+                InvoiceStatus.OVERDUE.name(),
+                InvoiceStatus.DUNNING.name(),
+                InvoiceStatus.LITIGATION.name()
         );
-        BigDecimal overdueAmount = invoiceRepository.findAll().stream()
-                .filter(i -> overdueStatuses.contains(i.getStatus()))
-                .map(Invoice::getInvoiceAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal overdueAmount = defaultZero(invoiceMapper.sumInvoiceAmountByStatuses(overdueStatuses));
 
         // 回収率: PAID / (PAID + receivableStatuses)
-        BigDecimal paidAmount = invoiceRepository.findAll().stream()
-                .filter(i -> i.getStatus() == InvoiceStatus.PAID)
-                .map(Invoice::getInvoiceAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal paidAmount = defaultZero(invoiceMapper.sumInvoiceAmountByStatuses(
+                List.of(InvoiceStatus.PAID.name())
+        ));
 
         BigDecimal totalAmount = paidAmount.add(totalReceivable);
         BigDecimal collectionRate = BigDecimal.ZERO;
@@ -235,31 +222,7 @@ public class InvoiceService {
         return new DashboardStatisticsDto(totalReceivable, overdueAmount, collectionRate);
     }
 
-    /**
-     * 請求書エンティティをレスポンスDTOに変換します。
-     * @param invoice 請求書エンティティ
-     * @return 請求書レスポンスDTO
-     */
-    private InvoiceResponseDto convertToResponseDto(Invoice invoice) {
-        InvoiceResponseDto dto = new InvoiceResponseDto();
-        dto.setInvoiceNo(invoice.getInvoiceNo());
-        dto.setCompanyCode(invoice.getCompanyCode());
-        
-        companyRepository.findByCompanyCode(invoice.getCompanyCode())
-                .ifPresent(company -> dto.setCompanyName(company.getCompanyName()));
-        
-        dto.setInvoiceAmount(invoice.getInvoiceAmount());
-        dto.setIssueDate(invoice.getIssueDate());
-        dto.setDueDate(invoice.getDueDate());
-
-        userRepository.findByUsername(invoice.getCreatedBy())
-                .ifPresent(user -> dto.setCreatedBy(user.getRealName()));
-
-        dto.setNotes(invoice.getNotes());
-        dto.setStatus(invoice.getStatus().getLabel());
-        dto.setPrincipalAmount(invoice.getPrincipalAmount());
-        dto.setInterestStartDate(invoice.getInterestStartDate());
-        dto.setInterestAmount(invoice.getInterestAmount());
-        return dto;
+    private BigDecimal defaultZero(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
     }
 }

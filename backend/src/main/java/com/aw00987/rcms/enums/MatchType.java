@@ -23,5 +23,14 @@ public enum MatchType {
     /**
      * 手動消込
      */
-    MANUAL
+    MANUAL;
+
+    public static MatchType fromName(String name) {
+        for (MatchType matchType : MatchType.values()) {
+            if (matchType.name().equalsIgnoreCase(name)) {
+                return matchType;
+            }
+        }
+        throw new IllegalArgumentException("MatchType not found: " + name);
+    }
 }

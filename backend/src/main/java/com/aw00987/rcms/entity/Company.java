@@ -1,62 +1,25 @@
 package com.aw00987.rcms.entity;
 
-import jakarta.persistence.*;
 import lombok.Data;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * 取引先企業
- */
 @Data
-@Entity
-@Table(name = "companies")
 public class Company {
 
-    /**
-     * ID
-     */
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /**
-     * 企業コード
-     */
-    @Column(name = "company_code", nullable = false, unique = true, length = 50)
     private String companyCode;
 
-    /**
-     * 企業名
-     */
-    @Column(name = "company_name", nullable = false)
     private String companyName;
 
-    /**
-     * メールアドレス
-     */
-    @Column(name = "email")
     private String email;
 
-    /**
-     * 電話番号
-     */
-    @Column(name = "phone_num")
     private String phoneNum;
 
-    /**
-     * ファクス番号
-     */
-    @Column(name = "fax_num")
     private String faxNum;
 
-    /**
-     * 住所
-     */
-    @Column(name = "address")
     private String address;
 
     /**
@@ -73,7 +36,6 @@ public class Company {
      * 决定利率： 需求文档提到“契约利率模式 (高风险客户)”。系统会根据 creditRating 自动判断：如果评级低于某个阈值，逾期利息将从法定利率（3%）跳升至惩罚性的契约利率（14.6%）。
      * 审批流触发： 评级较低的客户在录入账单时，可能需要触发“稟議（Ringi）”审批流程。
      */
-    @Column(name = "credit_rating", length = 10)
     private String creditRating;
 
     /**
@@ -88,26 +50,11 @@ public class Company {
      * 风险隔离： 防止单一客户因经营不善突然倒闭（连锁倒产）导致商社产生巨额坏账。
      * 预警机制： 当 creditLimit 接近饱和时，营业员（PIC）需要催促客户回款，以腾出额度进行下一笔交易。
      */
-    @Column(name = "credit_limit", precision = 18)
     private BigDecimal creditLimit;
 
-    /**
-     * 担当者username，一般为营业员的username
-     */
-    @Column(name = "pic_username", nullable = false)
-    private String picUsername;
+    private String picUserId;
 
-    /**
-     * 作成日時
-     */
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    /**
-     * 更新日時
-     */
-    @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 }

@@ -9,14 +9,21 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:root}
     password: ${SPRING_DATASOURCE_PASSWORD:123456}
     driver-class-name: com.mysql.cj.jdbc.Driver
-  jpa:
-    hibernate:
-      ddl-auto: update # 自动创建表结构，方便首次部署
-    show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.MySQL8Dialect
+  data:
+    web:
+      pageable:
+        one-indexed-parameters: true
+
+mybatis:
+  mapper-locations: classpath*:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
 
 jwt:
   secret: averylongandsecuresecretkeythatisatleast256bitslongforhs256555555555555555555555
   expiration: 3600000 # 1 hour in milliseconds
+
+rcms:
+  default-admin:
+    username: ${RCMS_DEFAULT_ADMIN_USERNAME:admin}
+    password: ${RCMS_DEFAULT_ADMIN_PASSWORD:admin}

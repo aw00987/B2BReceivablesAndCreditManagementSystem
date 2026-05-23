@@ -5,70 +5,48 @@ import com.aw00987.rcms.dto.UserResponseDto;
 import com.aw00987.rcms.entity.User;
 import com.aw00987.rcms.enums.UserRole;
 import com.aw00987.rcms.enums.UserStatus;
-import com.aw00987.rcms.repository.UserRepository;
+import com.aw00987.rcms.repository.UserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Optional;
+
 /**
- * ユーザー管理に関連するビジネスロジックを提供するサービス。
- * ユーザーの作成、取得、無効化などの操作を担当します。
+ * todo: 增删改列表查
  */
 @Service
 @RequiredArgsConstructor
 public class UserService {
 
-    private final UserRepository userRepository;
+    private final UserMapper userMapper;
 
-    /**
-     * 新しいユーザーを作成します。
-     * @param userRequestDto ユーザー作成リクエスト情報
-     * @return 保存されたユーザーエンティティ
-     */
     @Transactional
-    public User createUser(UserRequestDto userRequestDto) {
+    public void createUser(UserRequestDto userRequestDto) {
         User user = new User();
         user.setUsername(userRequestDto.getUsername());
         user.setPasswordHash(userRequestDto.getPassword());
         user.setRealName(userRequestDto.getRealName());
         user.setRole(UserRole.valueOf(userRequestDto.getRole()));
         user.setStatus(UserStatus.ENABLED);
-        return userRepository.save(user);
+        userMapper.insert(user);
     }
 
-    /**
-     * 有効なユーザーのリストをページングして取得します。
-     * @param pageable ページング情報
-     * @return ユーザーレスポンスDTOのページ
-     */
     public Page<UserResponseDto> getUsers(Pageable pageable) {
-        return userRepository.findByStatus(UserStatus.ENABLED, pageable).map(this::mapToUserResponseDTO);
+        List<UserResponseDto> list = userMapper.selectPage(pageable.getOffset(), pageable.getPageSize());
+        long count = userMapper.selectCount();
+        return new PageImpl<>(list, pageable, count);
     }
 
-    /**
-     * 指定されたユーザー名のユーザーを無効化します。
-     * @param username 無効化するユーザーのユーザー名
-     */
     @Transactional
-    public void disableUser(String username) {
-        userRepository.findByUsername(username).ifPresent(user -> {
-            user.setStatus(UserStatus.DISABLED);
-            userRepository.save(user);
-        });
-    }
-
-    /**
-     * ユーザーエンティティをレスポンスDTOに変換します。
-     * @param user ユーザーエンティティ
-     * @return ユーザーレスポンスDTO
-     */
-    private UserResponseDto mapToUserResponseDTO(User user) {
-        UserResponseDto dto = new UserResponseDto();
-        dto.setUsername(user.getUsername());
-        dto.setRealName(user.getRealName());
-        dto.setRole(user.getRole().getLabel());
-        return dto;
+    public void disableUserById(Long id) {
+        User user = new User();
+        user.setId(id);
+        user.setStatus(UserStatus.DISABLED);
+        userMapper.update(user);
     }
 }

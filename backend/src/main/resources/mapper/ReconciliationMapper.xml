@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aw00987.rcms.repository.ReconciliationMapper">
+
+    <insert id="save" parameterType="com.aw00987.rcms.entity.Reconciliation"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        insert into reconciliations (
+            invoice_no,
+            bank_transaction_id,
+            payer_name,
+            transaction_date,
+            transaction_amount,
+            reconciliation_amount,
+            match_type,
+            description,
+            variance_amount,
+            reconciled_at,
+            reconciled_by
+        ) values (
+            #{invoiceNo},
+            #{bankTransactionId},
+            #{payerName},
+            #{transactionDate},
+            #{transactionAmount},
+            #{reconciliationAmount},
+            #{matchType},
+            #{description},
+            #{varianceAmount},
+            #{reconciledAt},
+            #{reconciledBy}
+        )
+    </insert>
+
+</mapper>

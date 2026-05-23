@@ -1,7 +1,8 @@
 package com.aw00987.rcms.controller;
 
-import com.aw00987.rcms.dto.CompanyRequestDto;
-import com.aw00987.rcms.dto.CompanyResponseDto;
+import com.aw00987.rcms.dto.CompanyDictionaryQueryResponseDto;
+import com.aw00987.rcms.dto.CompanySaveRequestDto;
+import com.aw00987.rcms.dto.CompanyQueryResponseDto;
 import com.aw00987.rcms.service.CompanyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -19,17 +20,20 @@ public class CompanyController {
     private final CompanyService companyService;
 
     @PostMapping
-    public ResponseEntity<CompanyResponseDto> createCompany(@RequestBody CompanyRequestDto companyRequestDto) {
-        return ResponseEntity.ok(companyService.createCompany(companyRequestDto));
+    public ResponseEntity<String> createCompany(@RequestBody CompanySaveRequestDto companySaveRequestDto) {
+        companyService.addNewCompany(companySaveRequestDto);
+        return ResponseEntity.ok("");
     }
 
     @GetMapping
-    public ResponseEntity<Page<CompanyResponseDto>> getCompanies(Pageable pageable) {
-        return ResponseEntity.ok(companyService.getCompanies(pageable));
+    public ResponseEntity<Page<CompanyQueryResponseDto>> getCompanies(Pageable pageable) {
+        return ResponseEntity.ok(companyService.pageCompanies(pageable));
     }
 
-    @GetMapping("/search")
-    public ResponseEntity<List<CompanyResponseDto>> searchCompanies(@RequestParam String userInput) {
-        return ResponseEntity.ok(companyService.searchCompanies(userInput));
+    @GetMapping("/dic")
+    public ResponseEntity<List<CompanyDictionaryQueryResponseDto>> getCompanies(
+            @RequestParam String companyName
+    ) {
+        return ResponseEntity.ok(companyService.getCompaniesDictionary(companyName));
     }
 }

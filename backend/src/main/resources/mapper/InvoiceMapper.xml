@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aw00987.rcms.repository.InvoiceMapper">
+
+    <insert id="insert" parameterType="com.aw00987.rcms.entity.Invoice"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        insert into invoices (
+            invoice_no,
+            company_id,
+            status,
+            invoice_amount,
+            principal_amount,
+            interest_amount,
+            interest_start_date,
+            issue_date,
+            due_date,
+            notes,
+            created_by_user_id
+        ) values (
+            #{invoiceNo},
+            #{companyId},
+            #{status},
+            #{invoiceAmount},
+            #{principalAmount},
+            #{interestAmount},
+            #{interestStartDate},
+            #{issueDate},
+            #{dueDate},
+            #{notes},
+            #{createdByUserId}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.aw00987.rcms.entity.Invoice">
+        update invoices
+        <set>
+            <if test="invoiceNo != null">
+                invoice_no = #{invoiceNo},
+            </if>
+            <if test="companyId != null">
+                company_id = #{companyId},
+            </if>
+            <if test="status != null">
+                status = #{status},
+            </if>
+            <if test="invoiceAmount != null">
+                invoice_amount = #{invoiceAmount},
+            </if>
+            <if test="principalAmount != null">
+                principal_amount = #{principalAmount},
+            </if>
+            <if test="interestAmount != null">
+                interest_amount = #{interestAmount},
+            </if>
+            <if test="interestStartDate != null">
+                interest_start_date = #{interestStartDate},
+            </if>
+            <if test="issueDate != null">
+                issue_date = #{issueDate},
+            </if>
+            <if test="dueDate != null">
+                due_date = #{dueDate},
+            </if>
+            <if test="notes != null">
+                notes = #{notes},
+            </if>
+            <if test="createdByUserId != null">
+                created_by_user_id = #{createdByUserId},
+            </if>
+        </set>
+        where id = #{id}
+    </update>
+
+    <sql id="invoiceQueryFrom">
+        from invoices
+        left join companies on invoices.company_id = companies.id
+        left join users on invoices.created_by_user_id = users.id
+    </sql>
+
+    <sql id="invoiceQueryWithMultipleCondition">
+        <where>
+            <if test="invoiceNo != null">
+                and invoices.invoice_no like concat('%', #{invoiceNo}, '%')
+            </if>
+            <if test="companyName != null">
+                and companies.company_name like concat('%', #{companyName}, '%')
+            </if>
+            <if test="invoiceStatus != null">
+                and invoices.status = #{invoiceStatus}
+            </if>
+            <if test="invoiceAmount != null">
+                and invoices.invoice_amount &gt;= #{invoiceAmount}
+            </if>
+            <if test="invoiceDateFrom != null">
+                and invoices.issue_date &gt;= #{invoiceDateFrom}
+            </if>
+            <if test="invoiceDateTo != null">
+                and invoices.issue_date &lt;= #{invoiceDateTo}
+            </if>
+            <if test="createByUserRealName != null">
+                and users.real_name = #{createByUserRealName}
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectPage" resultType="com.aw00987.rcms.dto.InvoiceQueryResponseDto">
+        select
+        invoices.id,
+        invoices.invoice_no,
+        invoices.status,
+        companies.company_name,
+        invoices.invoice_amount,
+        invoices.principal_amount,
+        invoices.interest_amount,
+        invoices.issue_date,
+        invoices.due_date,
+        invoices.interest_start_date,
+        users.real_name as create_by,
+        invoices.notes
+        <include refid="invoiceQueryFrom"/>
+        <include refid="invoiceQueryWithMultipleCondition"/>
+        order by invoices.id
+        limit #{pageSize} offset #{offset}
+    </select>
+
+    <select id="selectCount" resultType="long">
+        select count(invoices.id)
+        <include refid="invoiceQueryFrom"/>
+        <include refid="invoiceQueryWithMultipleCondition"/>
+    </select>
+
+    <select id="selectById" resultType="com.aw00987.rcms.dto.InvoiceQueryResponseDto">
+        select
+            invoices.id,
+            invoices.invoice_no,
+            invoices.status,
+            companies.company_name,
+            invoices.invoice_amount,
+            invoices.principal_amount,
+            invoices.interest_amount,
+            invoices.issue_date,
+            invoices.due_date,
+            invoices.interest_start_date,
+            users.real_name as create_by,
+            invoices.notes
+        <include refid="invoiceQueryFrom"/>
+        where invoices.id = #{id}
+    </select>
+
+    <select id="selectByInvoiceNo" resultType="com.aw00987.rcms.dto.InvoiceQueryResponseDto">
+        select
+            invoices.id,
+            invoices.invoice_no,
+            invoices.status,
+            companies.company_name,
+            invoices.invoice_amount,
+            invoices.principal_amount,
+            invoices.interest_amount,
+            invoices.issue_date,
+            invoices.due_date,
+            invoices.interest_start_date,
+            users.real_name as create_by,
+            invoices.notes
+        <include refid="invoiceQueryFrom"/>
+        where invoices.invoice_no = #{invoiceNo}
+    </select>
+
+    <select id="sumInvoiceAmountByStatuses" resultType="java.math.BigDecimal">
+        select coalesce(sum(invoice_amount), 0)
+        from invoices
+        where status in
+        <foreach collection="statuses" item="status" open="(" separator="," close=")">
+            #{status}
+        </foreach>
+    </select>
+
+</mapper>

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aw00987.rcms.repository.CompanyMapper">
+
+    <insert id="insert" parameterType="com.aw00987.rcms.entity.Company"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        insert into companies (
+            company_code,
+            company_name,
+            email,
+            phone_num,
+            fax_num,
+            address,
+            credit_rating,
+            credit_limit,
+            pic_user_id
+        ) values (
+            #{companyCode},
+            #{companyName},
+            #{email},
+            #{phoneNum},
+            #{faxNum},
+            #{address},
+            #{creditRating},
+            #{creditLimit},
+            #{picUserId}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.aw00987.rcms.entity.Company">
+        update companies
+        <set>
+            <if test="companyCode != null">
+                company_code = #{companyCode},
+            </if>
+            <if test="companyName != null">
+                company_name = #{companyName},
+            </if>
+            <if test="email != null">
+                email = #{email},
+            </if>
+            <if test="phoneNum != null">
+                phone_num = #{phoneNum},
+            </if>
+            <if test="faxNum != null">
+                fax_num = #{faxNum},
+            </if>
+            <if test="address != null">
+                address = #{address},
+            </if>
+            <if test="creditRating != null">
+                credit_rating = #{creditRating},
+            </if>
+            <if test="creditLimit != null">
+                credit_limit = #{creditLimit},
+            </if>
+            <if test="picUserId != null">
+                pic_user_id = #{picUserId},
+            </if>
+        </set>
+        where id = #{id}
+    </update>
+
+</mapper>

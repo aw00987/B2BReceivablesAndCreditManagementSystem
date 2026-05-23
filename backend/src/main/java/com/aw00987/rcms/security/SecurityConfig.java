@@ -32,32 +32,22 @@ public class SecurityConfig {
 
     private final JwtRequestFilter jwtRequestFilter;
 
-    /**
-     * セキュリティフィルタチェーンを構成します。
-     * @param http HttpSecurityオブジェクト
-     * @return 構成されたSecurityFilterChain
-     * @throws Exception 設定エラーが発生した場合
-     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
                 .cors(Customizer.withDefaults()) // CORSを明示的に有効化
-                .csrf(AbstractHttpConfigurer::disable)
+                .csrf(AbstractHttpConfigurer::disable)//因为jwt认证不需要cookie/session，所以关闭Cross-Site Request Forgery防护
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**", "/api/v1/invoices/**", "/api/v1/companies/**").permitAll()
                         .requestMatchers("/api/v1/reconciliation/**").hasAnyRole("FINANCE", "ADMIN")
                         .requestMatchers("/api/v1/users/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 
-    /**
-     * CORS（Cross-Origin Resource Sharing）の設定を提供します。
-     * @return CorsConfigurationSourceオブジェクト
-     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
@@ -70,22 +60,11 @@ public class SecurityConfig {
         return source;
     }
 
-    /**
-     * 認証マネージャーをBeanとして登録します。
-     * @param authenticationConfiguration 認証構成
-     * @return AuthenticationManager
-     * @throws Exception 取得エラーが発生した場合
-     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
-    /**
-     * パスワードエンコーダーをBeanとして登録します。
-     * 現在は開発用としてNoOpPasswordEncoder（平文）を使用しています。
-     * @return PasswordEncoder
-     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return NoOpPasswordEncoder.getInstance();

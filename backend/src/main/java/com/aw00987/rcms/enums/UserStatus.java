@@ -5,17 +5,16 @@ package com.aw00987.rcms.enums;
  */
 public enum UserStatus {
 
-    DISABLED(0),
+    DISABLED,
 
-    ENABLED(1);
+    ENABLED;
 
-    private final int value;
-
-    UserStatus(int value) {
-        this.value = value;
-    }
-
-    public int getValue() {
-        return value;
+    public static UserStatus fromName(String userStatus) {
+        for (UserStatus value : UserStatus.values()) {
+            if (value.name().equalsIgnoreCase(userStatus)) {
+                return value;
+            }
+        }
+        throw new IllegalArgumentException("Invalid user status: " + userStatus);
     }
 }
